@@ -16,7 +16,7 @@
 
 1. 在支持本地技能的 Codex 环境中安装本技能。
 2. 提供视频链接和要整理的范围，或直接提供字幕、截图等可分析材料。网页取材需要可用的浏览器连接；登录或验证由用户完成。
-3. 生成 Word 时需具备 `documents` 技能、可用的 Python 文档依赖，以及 DOCX → PDF → 页面图片的渲染环境。本仓库不附带这些依赖；现有 Windows 指引使用 LibreOffice 和 Poppler，其他环境需确认实际路径。
+3. 生成 Word 时需具备 `documents` 技能、可用的 Python 文档依赖，以及 DOCX → PDF → 页面图片的渲染环境。本仓库不附带这些依赖；可使用 LibreOffice 和 Poppler，并根据运行环境确认工具路径。
 
 ## 安装与调用
 
@@ -24,24 +24,23 @@
 
 已能在技能列表中找到 `video-study-notes` 时，无需重复安装。
 
-在其他环境中，可向 Codex 发送以下请求：
+需要安装时，可向 Codex 发送以下请求：
 
 ```text
 $skill-installer
-请从 https://github.com/UpwardFly/video-study-notes 的仓库根目录安装技能，
-命名为 video-study-notes。
+请从 <技能仓库链接> 的仓库根目录安装技能，命名为 video-study-notes。
 ```
 
-这是私有仓库，安装时需有仓库访问权限；不要把访问令牌写进提示词或仓库文件。
+将 `<技能仓库链接>` 替换为实际仓库地址。
 
-也可将仓库内容放入 Codex 当前支持的技能目录，使 `video-study-notes/SKILL.md` 与三个子目录保持同级。当前官方文档列出的个人目录为 `~/.agents/skills/video-study-notes/`，项目目录为 `.agents/skills/video-study-notes/`；已有自定义安装位置可继续按本机实际配置使用。未识别时重启 Codex，再检查技能列表。参见 [OpenAI 官方技能说明](https://learn.chatgpt.com/docs/build-skills)。
+也可将仓库内容放入 Codex 当前支持的技能目录，使 `video-study-notes/SKILL.md` 与三个子目录保持同级。当前官方文档列出的个人目录为 `~/.agents/skills/video-study-notes/`，项目目录为 `.agents/skills/video-study-notes/`。未识别时重启 Codex，再检查技能列表。参见 [OpenAI 官方技能说明](https://learn.chatgpt.com/docs/build-skills)。
 
 ### 最简调用
 
 ```text
 $video-study-notes
-请整理这个视频的P2—P20：
-https://www.bilibili.com/video/BV1e34y1M7wR/?p=2
+请整理以下视频：<视频链接>
+范围：<分P范围或时间区间>
 ```
 
 在支持技能选择器的界面中，也可以直接选中本技能后发送链接和范围。
@@ -51,8 +50,8 @@ https://www.bilibili.com/video/BV1e34y1M7wR/?p=2
 在请求中补充即可，例如：
 
 ```text
-请按均衡精简程度整理，保留必要推导和代表例子。
-Word保存到我指定的目录；每批完成后交付，最后自动合稿。
+整理程度：均衡精简，保留必要推导和代表例子。
+保存位置：<输出目录>
 ```
 
 也可以指定只处理某些分P或时间区间、已有基础、侧重内容，以及仅在聊天中输出。未指定时使用技能默认流程，不需要逐条重复规则。
