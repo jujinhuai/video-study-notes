@@ -1,0 +1,16 @@
+# Python bytecode and local virtual environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Generated notes, previews and task intermediates
+work/
+output/
+outputs/
+.playwright-mcp/
+*.docx
+*.pdf
+
+# Office temporary files
+~$*
