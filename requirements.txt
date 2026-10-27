@@ -1,0 +1,4 @@
+# Python dependencies for scripts/word_notes.py.
+# Rendering also needs the documents skill and external LibreOffice/Poppler.
+python-docx
+lxml
