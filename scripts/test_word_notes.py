@@ -1,11 +1,11 @@
-"""Regression checks for editable math, TOC styles, and table pagination."""
+"""In-memory regression checks for naming, fonts, math, TOC, and tables."""
 import unittest
 from pathlib import Path
 
 from docx.oxml.ns import qn
 
 from word_notes import (
-    NotesDocument, column_vector, equation, matrix, sub, summation, sup, table, toc,
+    NotesDocument, Source, column_vector, equation, matrix, sub, summation, sup, table, toc,
 )
 
 
@@ -13,6 +13,37 @@ class WordNotesTests(unittest.TestCase):
     def document(self, blocks):
         # Construction is in memory; only NotesDocument.save() writes a file.
         return NotesDocument('公式检查', Path('公式检查.docx'), blocks=blocks).doc
+
+    def test_explicit_long_title_and_independent_filename_are_preserved(self):
+        title = '卷积神经网络系统学习笔记'
+        notes = NotesDocument(title, Path('自定义课程笔记完整版.docx'))
+        self.assertEqual(notes.doc.core_properties.title, title)
+        self.assertEqual(notes.doc.paragraphs[0].text, title)
+        self.assertEqual(notes.output_path.name, '自定义课程笔记完整版.docx')
+
+    def test_empty_title_and_non_docx_output_are_rejected(self):
+        for title, path in (('', '笔记.docx'), ('  ', '笔记.docx'), ('笔记', '笔记.pdf')):
+            with self.subTest(title=title, path=path), self.assertRaises(ValueError):
+                NotesDocument(title, Path(path))
+
+    def test_custom_font_applies_to_chinese_styles_and_source_links(self):
+        doc = NotesDocument('字体检查', Path('字体检查.docx'), chinese_font='微软雅黑',
+                            blocks=[toc(), equation(sup('x', '2'))],
+                            sources=[Source('测试来源', 'https://example.com')]).doc
+        for name in ('Normal', 'Title', 'Heading 1', 'Heading 2', '来源', '提示',
+                     '图片', '图注', '表格正文', '目录标题', 'toc 1', 'toc 2'):
+            with self.subTest(style=name):
+                fonts = doc.styles[name].element.rPr.find(qn('w:rFonts'))
+                self.assertEqual(set(fonts.attrib.values()), {'微软雅黑'})
+        for fonts in doc.element.xpath('.//w:hyperlink//w:rFonts'):
+            self.assertEqual(set(fonts.attrib.values()), {'微软雅黑'})
+        self.assertEqual(doc.styles['公式'].font.name, 'Cambria Math')
+        self.assertEqual(doc.styles['代码'].font.name, 'Consolas')
+        self.assertEqual(doc.element.xpath('.//m:r/w:rPr/w:rFonts')[0].get(qn('w:ascii')), 'Cambria Math')
+
+    def test_empty_font_name_is_rejected(self):
+        with self.assertRaises(ValueError):
+            NotesDocument('字体检查', Path('字体检查.docx'), chinese_font=' ')
 
     def test_column_vector_keeps_composite_values_in_one_column(self):
         value = column_vector(['x', [sub('α', '1'), '×', sub('λ', '1')]])

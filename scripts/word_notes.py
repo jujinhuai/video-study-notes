@@ -238,13 +238,17 @@ def function(name, expression):
 class NotesDocument:
     """Build from explicit blocks and sources; never reads earlier deliverables."""
 
-    def __init__(self, title, output_path, *, blocks=(), sources=()):
+    def __init__(self, title, output_path, *, blocks=(), sources=(), chinese_font="等线"):
         self.title = title
         self.output_path = Path(output_path)
-        if not title or len(title) > 10:
-            raise ValueError("Study-note title must contain 1 to 10 characters")
-        if self.output_path.suffix.lower() != ".docx" or self.output_path.stem != title:
-            raise ValueError("Output must be a .docx whose stem equals the title")
+        # Naming defaults belong to the caller; explicit user names may differ.
+        if not isinstance(title, str) or not title.strip():
+            raise ValueError("Study-note title must be a nonempty string")
+        if self.output_path.suffix.lower() != ".docx":
+            raise ValueError("Output must be a .docx file")
+        if not isinstance(chinese_font, str) or not chinese_font.strip():
+            raise ValueError("Chinese font must be a nonempty font name")
+        self.chinese_font = chinese_font
         self.doc = Document()
         self._styles()
         self.doc.core_properties.title = title
@@ -266,18 +270,18 @@ class NotesDocument:
             setattr(section, edge, Cm(2.5))
         left, center, justify = WD_ALIGN_PARAGRAPH.LEFT, WD_ALIGN_PARAGRAPH.CENTER, WD_ALIGN_PARAGRAPH.JUSTIFY
         specs = (
-            ("Normal", 11, 1.5, 0, 6, justify, 2, False, "等线"),
-            ("Title", 22, 1.2, 0, 18, left, 0, True, "等线"),
-            ("Heading 1", 16, 1.2, 18, 9, left, 0, True, "等线"),
-            ("Heading 2", 13, 1.2, 12, 6, left, 0, True, "等线"),
-            ("来源", 9.5, 1.2, 0, 6, left, 0, False, "等线"),
-            ("提示", 11, 1.5, 0, 6, justify, 0, False, "等线"),
+            ("Normal", 11, 1.5, 0, 6, justify, 2, False, self.chinese_font),
+            ("Title", 22, 1.2, 0, 18, left, 0, True, self.chinese_font),
+            ("Heading 1", 16, 1.2, 18, 9, left, 0, True, self.chinese_font),
+            ("Heading 2", 13, 1.2, 12, 6, left, 0, True, self.chinese_font),
+            ("来源", 9.5, 1.2, 0, 6, left, 0, False, self.chinese_font),
+            ("提示", 11, 1.5, 0, 6, justify, 0, False, self.chinese_font),
             ("公式", 12, 1.0, 8, 8, center, 0, False, "Cambria Math"),
-            ("图片", 11, 1.2, 6, 3, center, 0, False, "等线"),
-            ("图注", 9.5, 1.2, 3, 12, center, 0, False, "等线"),
-            ("表格正文", 10.5, 1.2, 0, 3, left, 0, False, "等线"),
+            ("图片", 11, 1.2, 6, 3, center, 0, False, self.chinese_font),
+            ("图注", 9.5, 1.2, 3, 12, center, 0, False, self.chinese_font),
+            ("表格正文", 10.5, 1.2, 0, 3, left, 0, False, self.chinese_font),
             ("代码", 10.5, 1.15, 0, 6, left, 0, False, "Consolas"),
-            ("目录标题", 16, 1.2, 18, 9, left, 0, True, "等线"),
+            ("目录标题", 16, 1.2, 18, 9, left, 0, True, self.chinese_font),
         )
         for name, size, spacing, before, after, align, indent, bold, font in specs:
             style = self.doc.styles[name] if name in self.doc.styles else self.doc.styles.add_style(name, WD_STYLE_TYPE.PARAGRAPH)
@@ -307,7 +311,7 @@ class NotesDocument:
             style = self.doc.styles[name] if name in self.doc.styles else self.doc.styles.add_style(name, WD_STYLE_TYPE.PARAGRAPH, builtin=True)
             style.style_id = "TOC" + str(level)
             style.base_style = self.doc.styles["来源"]
-            _font(style, "等线", 9.5)
+            _font(style, self.chinese_font, 9.5)
             _indent(style)
             fmt = style.paragraph_format
             fmt.line_spacing = 1.1
@@ -429,7 +433,7 @@ class NotesDocument:
             props = OxmlElement("w:rPr")
             fonts = OxmlElement("w:rFonts")
             for key in ("ascii", "hAnsi", "eastAsia", "cs"):
-                fonts.set(qn("w:" + key), "等线")
+                fonts.set(qn("w:" + key), self.chinese_font)
             props.append(fonts)
             for key, value in (("sz", "19"), ("color", "000000")):
                 prop = OxmlElement("w:" + key)
