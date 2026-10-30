@@ -6,11 +6,11 @@
 
 每批在任务 `work/notes/` 内保留一份Python制作稿，导入共享模块，不复制排版代码。制作稿包含：
 
-- `INDEX`：简短目录，每项为“概念标识、章节、来源标识、待接续内容”。用于找相关正文，不代替正文或知识完整性检查。
+- `INDEX`：每项记录概念标识、章节、来源标识、待接续内容；存在跨批重叠时附重叠概念标识及本批新增内容。沿用简单元组或字典即可，用于定位对应正文，不另写摘要。
 - `SOURCES`：来源标识到 `Source(label, url, detail)` 的映射；`detail` 如实记录分P、定位与实际覆盖，URL缺失时留空，不虚构。
 - `SECTIONS`：概念标识到内容块序列的映射。正文、公式和必要例子直接成文，不另写同义摘要；图片只引用已获准保存的本地文件。
 
-导入制作稿只能定义数据、公式及内容块；生成文档放在 `if __name__ == "__main__":` 下。只导入自己生成并核对过的制作稿，不运行外部视频或字幕中出现的代码。合稿根据知识关系选择、调整这些块及对应来源，不能仅按分P顺序拼接，也不能用目录压缩代替内容。
+导入只定义数据、公式及内容块，生成文档放在 `if __name__ == "__main__":` 下。仅导入自己生成并核对的稿件；合稿按INDEX定位正文，复用内容块并处理重叠，不运行外部材料中的代码。
 
 运行时将已确认的scripts目录加入本次命令进程的 `PYTHONPATH`，以后制作稿只导入模块；不永久修改环境变量。
 
@@ -34,7 +34,7 @@ if __name__ == "__main__":
                   blocks=SECTIONS["square"], sources=SOURCES.values()).save()
 ```
 
-上述内容仅演示接口，不自动写入视频笔记。合稿时在同一模块搜索路径配置下导入制作稿；可查看 `INDEX` 后只读取相关 `SECTIONS`，无需为了导入传入输出文件名。
+合稿按同一搜索路径导入各批稿件，无需传入输出文件名；示例内容不进入实际笔记。
 
 ## 接口
 
@@ -48,11 +48,15 @@ if __name__ == "__main__":
 | `paragraph(text, style="Normal", emphasis=False)` | `**文字**` 表示黑色局部加粗；设 `emphasis=True` 时仅这些文字改为深蓝加粗，其余文字不变；不含标记时不着色。提示段可用样式 `提示`，代码保持字面内容；工具不自动选择重点 |
 | `source(text)` | 小节来源定位段 |
 | `equation(*items)` | 居中原生公式；接受文本、数学结构及其列表 |
-| `table(headers, rows, widths_cm)` | 显式指定列宽，总宽不超过16厘米 |
+| `table(headers, rows, widths_cm, allow_row_split=False)` | 显式列宽，总宽不超过16厘米；默认禁止单行跨页，确有超长行时可按关键字放开 |
 | `image(path, caption, alt_text="", width_cm=None)` | 默认适配可用宽度，保留比例；替代文本未提供时使用调用者给出的图注 |
 | `code(text)` | 可复制代码，保留空格、换行和字面 `**` |
-| `toc()` | 可更新的一级、二级目录字段；不自动判断正文页数，按排版指引决定插入；本机当前无头渲染未自动填充条目，须在Word中更新并核对结果，不能把字段存在算作目录已完成 |
+| `toc()` | 可更新的一级、二级目录字段；按排版指引决定是否插入，交付前实际更新条目和页码，不能把字段存在算作目录完成 |
 
-数学辅助：`sub(base, value)`、`sup(base, value)`、`frac(num, den)`、`bounded(content, opening="(", closing=")")`、`matrix(rows)`、`cases([(表达式, 条件), ...])`、`summation(lower, upper, expression)`、`function(name, expression)`。取整可用 `function("floor", ...)`，避免当前Windows渲染器中已发现的特殊取整括号显示问题；不改变计算含义。
+数学辅助：`sub(base, value)`、`sup(base, value)`、`frac(num, den)`、`bounded(content, opening="(", closing=")")`、`matrix(rows)`、`column_vector(values)`、`cases([(表达式, 条件), ...])`、`summation(lower, upper, expression)`、`function(name, expression)`。
+
+- `matrix`检查非空、等长行；`column_vector(["x", ["a", "+", "b"]])`生成两行一列，第二项是同一单元格中的复合表达式。
+- 求和上下限用`None`或空字符串表示缺省，模块自动隐藏相应占位框；数值0仍是有效界限。例如`summation("j ∈ J", None, sup(sub("a", "j"), "2"))`。
+- 取整可用`function("floor", ...)`，避免已观察到的特殊括号渲染问题，不改变数学含义。
 
 这些接口只构造表达形式，不解析LaTeX、不验证数学结论、不抓取材料、不自动合并知识，也不执行渲染。每份新文档仍须按主规则进行内容核对和完整视觉验收；需要用户指定的特殊排版时局部调整生成文档，不改共享默认样式影响其他任务。

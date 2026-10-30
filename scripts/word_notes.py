@@ -50,8 +50,8 @@ def equation(*items):
     return Block("equation", items)
 
 
-def table(headers, rows, widths_cm):
-    return Block("table", (headers, rows, widths_cm))
+def table(headers, rows, widths_cm, *, allow_row_split=False):
+    return Block("table", (headers, rows, widths_cm), {"allow_row_split": allow_row_split})
 
 
 def image(path, caption, alt_text="", width_cm=None):
@@ -196,6 +196,11 @@ def matrix(rows):
     return bounded(_matrix(rows), "[", "]")
 
 
+def column_vector(values):
+    """Each value, including a composite expression, occupies one matrix cell."""
+    return matrix([[value] for value in values])
+
+
 def cases(rows):
     if any(len(row) != 2 for row in rows):
         raise ValueError("Each case needs an expression and condition")
@@ -209,9 +214,15 @@ def summation(lower, upper, expression):
         prop = OxmlElement("m:" + key)
         prop.set(qn("m:val"), value)
         props.append(prop)
+    # Absent limits need an explicit hide flag or Word displays an empty box.
+    for name, value in (("sub", lower), ("sup", upper)):
+        if value is None or (isinstance(value, str) and value == ""):
+            hidden = OxmlElement("m:" + name + "Hide")
+            hidden.set(qn("m:val"), "1")
+            props.append(hidden)
     element.append(props)
     for name, value in (("sub", lower), ("sup", upper), ("e", expression)):
-        _argument(element, name, value)
+        _argument(element, name, () if name != "e" and value is None else value)
     return element
 
 
@@ -291,11 +302,18 @@ class NotesDocument:
                     props.append(outline)
                 outline.set(qn("w:val"), str(int(name[-1]) - 1))
         for level in (1, 2):
-            name = "TOC " + str(level)
-            style = self.doc.styles[name] if name in self.doc.styles else self.doc.styles.add_style(name, WD_STYLE_TYPE.PARAGRAPH)
+            # Word recognizes built-in TOC names in lowercase; custom names collide.
+            name = "toc " + str(level)
+            style = self.doc.styles[name] if name in self.doc.styles else self.doc.styles.add_style(name, WD_STYLE_TYPE.PARAGRAPH, builtin=True)
+            style.style_id = "TOC" + str(level)
             style.base_style = self.doc.styles["来源"]
             _font(style, "等线", 9.5)
             _indent(style)
+            fmt = style.paragraph_format
+            fmt.line_spacing = 1.1
+            fmt.space_before, fmt.space_after = Pt(0), Pt(2)
+            fmt.left_indent = Cm(0 if level == 1 else 0.6)
+            fmt.keep_with_next = False
 
     def _paragraph(self, text, style, emphasis=False):
         paragraph = self.doc.add_paragraph(style=style)
@@ -324,12 +342,12 @@ class NotesDocument:
             _math_append(math, block.args)
             paragraph._p.append(math)
         elif block.kind == "table":
-            self._table(*block.args)
+            self._table(*block.args, **block.options)
         elif block.kind == "image":
             self._image(*block.args, **block.options)
         elif block.kind == "toc":
             self.doc.add_paragraph("目录", "目录标题")
-            paragraph = self.doc.add_paragraph(style="TOC 1")
+            paragraph = self.doc.add_paragraph(style="toc 1")
             field = OxmlElement("w:fldSimple")
             field.set(qn("w:instr"), 'TOC \\o "1-2" \\h \\z \\u')
             field.set(qn("w:dirty"), "true")
@@ -351,7 +369,7 @@ class NotesDocument:
             raise ValueError("Unknown content block: " + block.kind)
         self._after_table = block.kind == "table"
 
-    def _table(self, headers, rows, widths_cm):
+    def _table(self, headers, rows, widths_cm, *, allow_row_split=False):
         columns = len(headers)
         if not columns or len(widths_cm) != columns or any(len(row) != columns for row in rows):
             raise ValueError("Table headers, rows, and widths must have matching columns")
@@ -378,6 +396,8 @@ class NotesDocument:
         table.rows[0]._tr.get_or_add_trPr().append(OxmlElement("w:tblHeader"))
         for index, values in enumerate((headers, *rows)):
             row = table.rows[0] if index == 0 else table.add_row()
+            if not allow_row_split:
+                row._tr.get_or_add_trPr().append(OxmlElement("w:cantSplit"))
             for cell, value, width in zip(row.cells, values, widths_cm):
                 cell.width = Cm(width)
                 cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
