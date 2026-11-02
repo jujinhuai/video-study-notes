@@ -5,7 +5,7 @@ from pathlib import Path
 from docx.oxml.ns import qn
 
 from word_notes import (
-    NotesDocument, Source, column_vector, equation, matrix, sub, summation, sup, table, toc,
+    NotesDocument, Source, code, column_vector, equation, matrix, sub, summation, sup, table, toc,
 )
 
 
@@ -44,6 +44,12 @@ class WordNotesTests(unittest.TestCase):
     def test_empty_font_name_is_rejected(self):
         with self.assertRaises(ValueError):
             NotesDocument('字体检查', Path('字体检查.docx'), chinese_font=' ')
+
+    def test_code_preserves_whitespace_and_literal_asterisks(self):
+        snippet = "if ready:\n    value = '**literal**'\n"
+        doc = self.document([code(snippet)])
+        paragraph = next(p for p in doc.paragraphs if p.style.name == '代码')
+        self.assertEqual(paragraph.text, snippet)
 
     def test_column_vector_keeps_composite_values_in_one_column(self):
         value = column_vector(['x', [sub('α', '1'), '×', sub('λ', '1')]])
